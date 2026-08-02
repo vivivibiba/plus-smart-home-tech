@@ -38,16 +38,24 @@ public class EventCollectorService {
 
     public void collect(SensorEvent event) {
         SensorEventAvro avroEvent = sensorEventMapper.toAvro(event);
-        send(sensorEventsTopic, event.getHubId(), avroEvent);
+        send(sensorEventsTopic, event.getHubId(), event.getTimestamp().toEpochMilli(), avroEvent);
     }
 
     public void collect(HubEvent event) {
         HubEventAvro avroEvent = hubEventMapper.toAvro(event);
-        send(hubEventsTopic, event.getHubId(), avroEvent);
+        send(hubEventsTopic, event.getHubId(), event.getTimestamp().toEpochMilli(), avroEvent);
     }
 
-    private void send(String topic, String key, SpecificRecordBase event) {
-        producer.send(new ProducerRecord<>(topic, key, event), (metadata, exception) -> {
+    private void send(String topic, String key, long timestamp, SpecificRecordBase event) {
+        ProducerRecord<String, SpecificRecordBase> record = new ProducerRecord<>(
+                topic,
+                null,
+                timestamp,
+                key,
+                event
+        );
+
+        producer.send(record, (metadata, exception) -> {
             if (exception != null) {
                 log.error("Failed to send telemetry event to topic {}", topic, exception);
             } else if (log.isDebugEnabled()) {

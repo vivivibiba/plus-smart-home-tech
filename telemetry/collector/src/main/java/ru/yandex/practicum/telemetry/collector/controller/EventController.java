@@ -1,34 +1,39 @@
 package ru.yandex.practicum.telemetry.collector.controller;
 
-import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
-import ru.yandex.practicum.telemetry.collector.model.hub.HubEvent;
-import ru.yandex.practicum.telemetry.collector.model.sensor.SensorEvent;
+import com.google.protobuf.Empty;
+import io.grpc.Status;
+import io.grpc.stub.StreamObserver;
+import net.devh.boot.grpc.server.service.GrpcService;
+import ru.yandex.practicum.grpc.telemetry.collector.CollectorControllerGrpc;
+import ru.yandex.practicum.grpc.telemetry.event.HubEventProto;
+import ru.yandex.practicum.grpc.telemetry.event.SensorEventProto;
 import ru.yandex.practicum.telemetry.collector.service.EventCollectorService;
 
-@RestController
-@RequestMapping("/events")
-public class EventController {
+@GrpcService
+public class EventController extends CollectorControllerGrpc.CollectorControllerImplBase {
     private final EventCollectorService collectorService;
 
     public EventController(EventCollectorService collectorService) {
         this.collectorService = collectorService;
     }
 
-    @PostMapping("/sensors")
-    @ResponseStatus(HttpStatus.OK)
-    public void collectSensorEvent(@Valid @RequestBody SensorEvent event) {
-        collectorService.collect(event);
+    @Override
+    public void collectSensorEvent(SensorEventProto request, StreamObserver<Empty> responseObserver) {
+        collect(() -> collectorService.collect(request), responseObserver);
     }
 
-    @PostMapping("/hubs")
-    @ResponseStatus(HttpStatus.OK)
-    public void collectHubEvent(@Valid @RequestBody HubEvent event) {
-        collectorService.collect(event);
+    @Override
+    public void collectHubEvent(HubEventProto request, StreamObserver<Empty> responseObserver) {
+        collect(() -> collectorService.collect(request), responseObserver);
+    }
+
+    private void collect(Runnable action, StreamObserver<Empty> responseObserver) {
+        try {
+            action.run();
+            responseObserver.onNext(Empty.getDefaultInstance());
+            responseObserver.onCompleted();
+        } catch (Exception exception) {
+            responseObserver.onError(Status.fromThrowable(exception).asRuntimeException());
+        }
     }
 }

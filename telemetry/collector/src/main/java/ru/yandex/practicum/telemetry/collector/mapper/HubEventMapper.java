@@ -1,6 +1,9 @@
 package ru.yandex.practicum.telemetry.collector.mapper;
 
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.grpc.telemetry.event.DeviceActionProto;
+import ru.yandex.practicum.grpc.telemetry.event.HubEventProto;
+import ru.yandex.practicum.grpc.telemetry.event.ScenarioConditionProto;
 import ru.yandex.practicum.kafka.telemetry.event.ActionTypeAvro;
 import ru.yandex.practicum.kafka.telemetry.event.ConditionOperationAvro;
 import ru.yandex.practicum.kafka.telemetry.event.ConditionTypeAvro;
@@ -12,49 +15,48 @@ import ru.yandex.practicum.kafka.telemetry.event.HubEventAvro;
 import ru.yandex.practicum.kafka.telemetry.event.ScenarioAddedEventAvro;
 import ru.yandex.practicum.kafka.telemetry.event.ScenarioConditionAvro;
 import ru.yandex.practicum.kafka.telemetry.event.ScenarioRemovedEventAvro;
-import ru.yandex.practicum.telemetry.collector.model.hub.DeviceAction;
-import ru.yandex.practicum.telemetry.collector.model.hub.DeviceAddedEvent;
-import ru.yandex.practicum.telemetry.collector.model.hub.DeviceRemovedEvent;
-import ru.yandex.practicum.telemetry.collector.model.hub.HubEvent;
-import ru.yandex.practicum.telemetry.collector.model.hub.ScenarioAddedEvent;
-import ru.yandex.practicum.telemetry.collector.model.hub.ScenarioCondition;
-import ru.yandex.practicum.telemetry.collector.model.hub.ScenarioRemovedEvent;
 
+import java.time.Instant;
 import java.util.List;
 
 @Component
 public class HubEventMapper {
 
-    public HubEventAvro toAvro(HubEvent event) {
-        Object payload;
-        if (event instanceof DeviceAddedEvent added) {
-            payload = new DeviceAddedEventAvro(added.getId(), DeviceTypeAvro.valueOf(added.getDeviceType().name()));
-        } else if (event instanceof DeviceRemovedEvent removed) {
-            payload = new DeviceRemovedEventAvro(removed.getId());
-        } else if (event instanceof ScenarioAddedEvent added) {
-            List<ScenarioConditionAvro> conditions = added.getConditions().stream()
-                    .map(this::toAvro)
-                    .toList();
-            List<DeviceActionAvro> actions = added.getActions().stream()
-                    .map(this::toAvro)
-                    .toList();
-            payload = new ScenarioAddedEventAvro(added.getName(), conditions, actions);
-        } else if (event instanceof ScenarioRemovedEvent removed) {
-            payload = new ScenarioRemovedEventAvro(removed.getName());
-        } else {
-            throw new IllegalArgumentException("Unsupported hub event type: " + event.getClass().getName());
-        }
+    public HubEventAvro toAvro(HubEventProto event) {
+        Object payload = switch (event.getPayloadCase()) {
+            case DEVICE_ADDED -> new DeviceAddedEventAvro(
+                    event.getDeviceAdded().getId(),
+                    DeviceTypeAvro.valueOf(event.getDeviceAdded().getType().name())
+            );
+            case DEVICE_REMOVED -> new DeviceRemovedEventAvro(event.getDeviceRemoved().getId());
+            case SCENARIO_ADDED -> {
+                List<ScenarioConditionAvro> conditions = event.getScenarioAdded().getConditionList().stream()
+                        .map(this::toAvro)
+                        .toList();
+                List<DeviceActionAvro> actions = event.getScenarioAdded().getActionList().stream()
+                        .map(this::toAvro)
+                        .toList();
+                yield new ScenarioAddedEventAvro(event.getScenarioAdded().getName(), conditions, actions);
+            }
+            case SCENARIO_REMOVED -> new ScenarioRemovedEventAvro(event.getScenarioRemoved().getName());
+            case PAYLOAD_NOT_SET -> throw new IllegalArgumentException("Hub event payload is not set");
+        };
 
-        return new HubEventAvro(event.getHubId(), event.getTimestamp(), payload);
+        Instant timestamp = Instant.ofEpochSecond(
+                event.getTimestamp().getSeconds(),
+                event.getTimestamp().getNanos()
+        );
+
+        return new HubEventAvro(event.getHubId(), timestamp, payload);
     }
 
-    private ScenarioConditionAvro toAvro(ScenarioCondition condition) {
-        Object value = condition.getValue();
-        if (value instanceof Number number) {
-            value = number.intValue();
-        } else if (value != null && !(value instanceof Boolean)) {
-            throw new IllegalArgumentException("Scenario condition value must be null, integer or boolean");
-        }
+    private ScenarioConditionAvro toAvro(ScenarioConditionProto condition) {
+        Object value = switch (condition.getValueCase()) {
+            case BOOL_VALUE -> condition.getBoolValue();
+            case INT_VALUE -> condition.getIntValue();
+            case VALUE_NOT_SET -> null;
+        };
+
         return new ScenarioConditionAvro(
                 condition.getSensorId(),
                 ConditionTypeAvro.valueOf(condition.getType().name()),
@@ -63,11 +65,11 @@ public class HubEventMapper {
         );
     }
 
-    private DeviceActionAvro toAvro(DeviceAction action) {
+    private DeviceActionAvro toAvro(DeviceActionProto action) {
         return new DeviceActionAvro(
                 action.getSensorId(),
                 ActionTypeAvro.valueOf(action.getType().name()),
-                action.getValue()
+                action.hasValue() ? action.getValue() : null
         );
     }
 }

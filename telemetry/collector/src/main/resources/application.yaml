@@ -1,9 +1,10 @@
-server:
-  port: 8080
-
 spring:
   application:
     name: collector
+
+grpc:
+  server:
+    port: 59091
 
 collector:
   kafka:

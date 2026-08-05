@@ -7,12 +7,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.grpc.telemetry.event.HubEventProto;
+import ru.yandex.practicum.grpc.telemetry.event.SensorEventProto;
 import ru.yandex.practicum.kafka.telemetry.event.HubEventAvro;
 import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
 import ru.yandex.practicum.telemetry.collector.mapper.HubEventMapper;
 import ru.yandex.practicum.telemetry.collector.mapper.SensorEventMapper;
-import ru.yandex.practicum.telemetry.collector.model.hub.HubEvent;
-import ru.yandex.practicum.telemetry.collector.model.sensor.SensorEvent;
+
+import java.time.Instant;
 
 @Service
 public class EventCollectorService {
@@ -36,14 +38,18 @@ public class EventCollectorService {
         this.hubEventsTopic = hubEventsTopic;
     }
 
-    public void collect(SensorEvent event) {
+    public void collect(SensorEventProto event) {
         SensorEventAvro avroEvent = sensorEventMapper.toAvro(event);
-        send(sensorEventsTopic, event.getHubId(), event.getTimestamp().toEpochMilli(), avroEvent);
+        send(sensorEventsTopic, event.getHubId(), toInstant(event.getTimestamp()).toEpochMilli(), avroEvent);
     }
 
-    public void collect(HubEvent event) {
+    public void collect(HubEventProto event) {
         HubEventAvro avroEvent = hubEventMapper.toAvro(event);
-        send(hubEventsTopic, event.getHubId(), event.getTimestamp().toEpochMilli(), avroEvent);
+        send(hubEventsTopic, event.getHubId(), toInstant(event.getTimestamp()).toEpochMilli(), avroEvent);
+    }
+
+    private Instant toInstant(com.google.protobuf.Timestamp timestamp) {
+        return Instant.ofEpochSecond(timestamp.getSeconds(), timestamp.getNanos());
     }
 
     private void send(String topic, String key, long timestamp, SpecificRecordBase event) {

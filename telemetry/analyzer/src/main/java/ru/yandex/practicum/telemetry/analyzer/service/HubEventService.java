@@ -23,7 +23,6 @@ import ru.yandex.practicum.telemetry.analyzer.repository.SensorRepository;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -40,9 +39,17 @@ public class HubEventService {
 
     @Transactional
     public void handle(HubEventAvro event) {
-        Objects.requireNonNull(event, "event");
-        Object payload = Objects.requireNonNull(event.getPayload(), "event.payload");
-        String hubId = Objects.requireNonNull(event.getHubId(), "event.hubId");
+        if (event == null) {
+            log.warn("Skipping invalid hub event: event is null");
+            return;
+        }
+
+        Object payload = event.getPayload();
+        String hubId = event.getHubId();
+        if (payload == null || hubId == null) {
+            log.warn("Skipping invalid hub event: hubId={}, payload={}", hubId, payload);
+            return;
+        }
 
         if (payload instanceof DeviceAddedEventAvro addedEvent) {
             addDevice(hubId, addedEvent);
@@ -53,7 +60,8 @@ public class HubEventService {
         } else if (payload instanceof ScenarioRemovedEventAvro removedEvent) {
             removeScenario(hubId, removedEvent);
         } else {
-            throw new IllegalArgumentException("Unsupported hub event payload: " + payload.getClass().getName());
+            log.warn("Skipping unsupported hub event payload: hubId={}, payloadType={}",
+                    hubId, payload.getClass().getName());
         }
     }
 

@@ -1,5 +1,7 @@
 package ru.yandex.practicum.telemetry.aggregator.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
 import ru.yandex.practicum.kafka.telemetry.event.SensorStateAvro;
@@ -13,14 +15,24 @@ import java.util.Optional;
 /** Builds and updates one current sensor snapshot per hub. */
 @Component
 public class SnapshotAggregator {
+    private static final Logger log = LoggerFactory.getLogger(SnapshotAggregator.class);
+
     private final Map<String, SensorsSnapshotAvro> snapshots = new HashMap<>();
 
     public Optional<SensorsSnapshotAvro> updateState(SensorEventAvro event) {
-        Objects.requireNonNull(event, "event");
-        Objects.requireNonNull(event.getHubId(), "event.hubId");
-        Objects.requireNonNull(event.getId(), "event.id");
-        Objects.requireNonNull(event.getTimestamp(), "event.timestamp");
-        Objects.requireNonNull(event.getPayload(), "event.payload");
+        if (event == null) {
+            log.warn("Skipping invalid sensor event: event is null");
+            return Optional.empty();
+        }
+
+        if (event.getHubId() == null
+                || event.getId() == null
+                || event.getTimestamp() == null
+                || event.getPayload() == null) {
+            log.warn("Skipping invalid sensor event: hubId={}, id={}, timestamp={}, payload={}",
+                    event.getHubId(), event.getId(), event.getTimestamp(), event.getPayload());
+            return Optional.empty();
+        }
 
         SensorsSnapshotAvro snapshot = snapshots.computeIfAbsent(
                 event.getHubId(),

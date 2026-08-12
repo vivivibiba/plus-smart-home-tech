@@ -24,8 +24,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public Page<ProductDto> getProducts(ProductCategory category, Pageable pageable) {
-        return repository.findAllByProductCategoryAndProductState(
-                        category, ProductState.ACTIVE, pageable)
+        return repository.findAllByProductCategory(category, pageable)
                 .map(this::toDto);
     }
 

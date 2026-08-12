@@ -12,6 +12,7 @@ import ru.yandex.practicum.commerce.cart.repository.ShoppingCartRepository;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -57,17 +58,12 @@ public class ShoppingCartService {
     }
 
     @Transactional
-    public ShoppingCartDto remove(String username, Map<UUID, Long> removals) {
+    public ShoppingCartDto remove(String username, List<UUID> productIds) {
         ShoppingCart cart = find(username);
         ensureActive(cart);
-        if (removals == null) return toDto(cart);
-        removals.forEach((id, qty) -> {
-            Long current = cart.getProducts().get(id);
-            if (current == null) return;
-            long next = current - (qty == null ? current : qty);
-            if (next <= 0) cart.getProducts().remove(id);
-            else cart.getProducts().put(id, next);
-        });
+        if (productIds != null) {
+            productIds.forEach(cart.getProducts()::remove);
+        }
         return toDto(repository.save(cart));
     }
 

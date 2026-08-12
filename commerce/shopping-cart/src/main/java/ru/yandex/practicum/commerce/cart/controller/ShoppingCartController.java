@@ -6,6 +6,7 @@ import ru.yandex.practicum.commerce.api.dto.ChangeProductQuantityRequest;
 import ru.yandex.practicum.commerce.api.dto.ShoppingCartDto;
 import ru.yandex.practicum.commerce.cart.service.ShoppingCartService;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -28,8 +29,8 @@ public class ShoppingCartController implements ShoppingCartApi {
     }
 
     @Override
-    public ShoppingCartDto removeProducts(String username, Map<UUID, Long> products) {
-        return service.remove(username, products);
+    public ShoppingCartDto removeProducts(String username, List<UUID> productIds) {
+        return service.remove(username, productIds);
     }
 
     @Override

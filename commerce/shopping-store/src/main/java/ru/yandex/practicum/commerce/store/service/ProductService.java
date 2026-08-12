@@ -1,11 +1,10 @@
 package ru.yandex.practicum.commerce.store.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.commerce.api.dto.ProductDto;
-import ru.yandex.practicum.commerce.api.dto.SetProductQuantityStateRequest;
 import ru.yandex.practicum.commerce.api.model.ProductCategory;
 import ru.yandex.practicum.commerce.api.model.ProductState;
 import ru.yandex.practicum.commerce.api.model.QuantityState;
@@ -24,9 +23,9 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ProductDto> getProducts(ProductCategory category, int page, int size) {
+    public Page<ProductDto> getProducts(ProductCategory category, Pageable pageable) {
         return repository.findAllByProductCategoryAndProductState(
-                        category, ProductState.ACTIVE, PageRequest.of(page, size))
+                        category, ProductState.ACTIVE, pageable)
                 .map(this::toDto);
     }
 
@@ -65,9 +64,9 @@ public class ProductService {
     }
 
     @Transactional
-    public boolean setQuantityState(SetProductQuantityStateRequest request) {
-        Product product = find(request.productId());
-        product.setQuantityState(request.quantityState());
+    public boolean setQuantityState(UUID productId, QuantityState quantityState) {
+        Product product = find(productId);
+        product.setQuantityState(quantityState);
         repository.save(product);
         return true;
     }

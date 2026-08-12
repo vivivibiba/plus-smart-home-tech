@@ -1,11 +1,12 @@
 package ru.yandex.practicum.commerce.store.controller;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.RestController;
 import ru.yandex.practicum.commerce.api.ShoppingStoreApi;
 import ru.yandex.practicum.commerce.api.dto.ProductDto;
-import ru.yandex.practicum.commerce.api.dto.SetProductQuantityStateRequest;
 import ru.yandex.practicum.commerce.api.model.ProductCategory;
+import ru.yandex.practicum.commerce.api.model.QuantityState;
 import ru.yandex.practicum.commerce.store.service.ProductService;
 
 import java.util.UUID;
@@ -19,8 +20,8 @@ public class ShoppingStoreController implements ShoppingStoreApi {
     }
 
     @Override
-    public Page<ProductDto> getProducts(ProductCategory category, int page, int size) {
-        return service.getProducts(category, page, size);
+    public Page<ProductDto> getProducts(ProductCategory category, Pageable pageable) {
+        return service.getProducts(category, pageable);
     }
 
     @Override
@@ -44,7 +45,7 @@ public class ShoppingStoreController implements ShoppingStoreApi {
     }
 
     @Override
-    public boolean setQuantityState(SetProductQuantityStateRequest request) {
-        return service.setQuantityState(request);
+    public boolean setQuantityState(UUID productId, QuantityState quantityState) {
+        return service.setQuantityState(productId, quantityState);
     }
 }

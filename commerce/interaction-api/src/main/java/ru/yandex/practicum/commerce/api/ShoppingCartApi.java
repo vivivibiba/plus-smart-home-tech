@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.commerce.api.dto.ChangeProductQuantityRequest;
 import ru.yandex.practicum.commerce.api.dto.ShoppingCartDto;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -18,14 +19,14 @@ public interface ShoppingCartApi {
     ShoppingCartDto addProducts(@RequestParam @NotBlank String username,
                                 @RequestBody Map<UUID, Long> products);
 
-    @DeleteMapping("/api/v1/shopping-cart")
+    @PostMapping("/api/v1/shopping-cart/remove")
     ShoppingCartDto removeProducts(@RequestParam @NotBlank String username,
-                                   @RequestBody Map<UUID, Long> products);
+                                   @RequestBody List<UUID> productIds);
 
     @PostMapping("/api/v1/shopping-cart/change-quantity")
     ShoppingCartDto changeQuantity(@RequestParam @NotBlank String username,
                                    @Valid @RequestBody ChangeProductQuantityRequest request);
 
-    @PostMapping("/api/v1/shopping-cart/deactivate")
+    @DeleteMapping("/api/v1/shopping-cart")
     void deactivate(@RequestParam @NotBlank String username);
 }

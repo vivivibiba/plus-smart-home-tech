@@ -30,6 +30,46 @@ services:
     volumes:
       - analyzer-db-data:/var/lib/postgresql/data
 
+
+  shopping-store-db:
+    image: postgres:16-alpine
+    container_name: shopping-store-db
+    ports:
+      - "5433:5432"
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: shopping_store
+      POSTGRES_USER: commerce
+      POSTGRES_PASSWORD: commerce
+    volumes:
+      - shopping-store-db-data:/var/lib/postgresql/data
+
+  shopping-cart-db:
+    image: postgres:16-alpine
+    container_name: shopping-cart-db
+    ports:
+      - "5434:5432"
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: shopping_cart
+      POSTGRES_USER: commerce
+      POSTGRES_PASSWORD: commerce
+    volumes:
+      - shopping-cart-db-data:/var/lib/postgresql/data
+
+  warehouse-db:
+    image: postgres:16-alpine
+    container_name: warehouse-db
+    ports:
+      - "5435:5432"
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: warehouse
+      POSTGRES_USER: commerce
+      POSTGRES_PASSWORD: commerce
+    volumes:
+      - warehouse-db-data:/var/lib/postgresql/data
+
   kafka-init-topics:
     image: confluentinc/confluent-local:7.4.3
     container_name: kafka-init-topics
@@ -48,3 +88,6 @@ services:
     init: true
 volumes:
   analyzer-db-data:
+  shopping-store-db-data:
+  shopping-cart-db-data:
+  warehouse-db-data:

@@ -1,6 +1,7 @@
 logging:
   level:
     ru.yandex.practicum.telemetry: INFO
+    ru.yandex.practicum.commerce: INFO
 
 eureka:
   client:

@@ -40,7 +40,7 @@ public class ProductService {
         product.setProductId(dto.productId() == null ? UUID.randomUUID() : dto.productId());
         copy(dto, product);
         if (product.getQuantityState() == null) product.setQuantityState(QuantityState.ENDED);
-        product.setProductState(ProductState.ACTIVE);
+        product.setProductState(dto.productState() == null ? ProductState.ACTIVE : dto.productState());
         return toDto(repository.save(product));
     }
 

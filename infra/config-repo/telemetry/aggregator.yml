@@ -1,0 +1,14 @@
+spring:
+  main:
+    web-application-type: none
+
+aggregator:
+  kafka:
+    bootstrap-servers: localhost:9092
+    sensor-events-topic: telemetry.sensors.v1
+    snapshots-topic: telemetry.snapshots.v1
+    consumer:
+      group-id: telemetry.aggregator
+      auto-offset-reset: earliest
+      max-poll-records: 1
+      poll-timeout-ms: 1000

@@ -70,6 +70,45 @@ services:
     volumes:
       - warehouse-db-data:/var/lib/postgresql/data
 
+  order-db:
+    image: postgres:16-alpine
+    container_name: order-db
+    ports:
+      - "5436:5432"
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: order_service
+      POSTGRES_USER: commerce
+      POSTGRES_PASSWORD: commerce
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+
+  payment-db:
+    image: postgres:16-alpine
+    container_name: payment-db
+    ports:
+      - "5437:5432"
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: payment_service
+      POSTGRES_USER: commerce
+      POSTGRES_PASSWORD: commerce
+    volumes:
+      - payment-db-data:/var/lib/postgresql/data
+
+  delivery-db:
+    image: postgres:16-alpine
+    container_name: delivery-db
+    ports:
+      - "5438:5432"
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: delivery_service
+      POSTGRES_USER: commerce
+      POSTGRES_PASSWORD: commerce
+    volumes:
+      - delivery-db-data:/var/lib/postgresql/data
+
   kafka-init-topics:
     image: confluentinc/confluent-local:7.4.3
     container_name: kafka-init-topics
@@ -91,3 +130,6 @@ volumes:
   shopping-store-db-data:
   shopping-cart-db-data:
   warehouse-db-data:
+  order-db-data:
+  payment-db-data:
+  delivery-db-data:

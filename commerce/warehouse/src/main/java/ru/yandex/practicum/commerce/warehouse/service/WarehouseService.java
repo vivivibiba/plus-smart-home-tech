@@ -7,6 +7,8 @@ import ru.yandex.practicum.commerce.warehouse.exception.NotEnoughProductInWareho
 import ru.yandex.practicum.commerce.warehouse.exception.ProductAlreadyExistsInWarehouseException;
 import ru.yandex.practicum.commerce.warehouse.exception.WarehouseProductNotFoundException;
 import ru.yandex.practicum.commerce.warehouse.model.WarehouseProduct;
+import ru.yandex.practicum.commerce.warehouse.model.OrderBooking;
+import ru.yandex.practicum.commerce.warehouse.repository.OrderBookingRepository;
 import ru.yandex.practicum.commerce.warehouse.repository.WarehouseProductRepository;
 
 import java.security.SecureRandom;
@@ -21,9 +23,12 @@ public class WarehouseService {
     private static final String CURRENT_ADDRESS = ADDRESSES[new SecureRandom().nextInt(ADDRESSES.length)];
 
     private final WarehouseProductRepository repository;
+    private final OrderBookingRepository orderBookingRepository;
 
-    public WarehouseService(WarehouseProductRepository repository) {
+    public WarehouseService(WarehouseProductRepository repository,
+                            OrderBookingRepository orderBookingRepository) {
         this.repository = repository;
+        this.orderBookingRepository = orderBookingRepository;
     }
 
     @Transactional
@@ -50,8 +55,64 @@ public class WarehouseService {
     }
 
     @Transactional
-    public BookedProductsDto book(ShoppingCartDto cart) {
-        if (cart == null || cart.products() == null || cart.products().isEmpty()) {
+    public BookedProductsDto check(ShoppingCartDto cart) {
+        return inspect(cart.products());
+    }
+
+    @Transactional
+    public BookedProductsDto assemble(AssemblyProductsForOrderRequest request) {
+        OrderBooking existing = orderBookingRepository.findById(request.orderId()).orElse(null);
+        if (existing != null) {
+            return new BookedProductsDto(existing.getDeliveryWeight(), existing.getDeliveryVolume(), existing.isFragile());
+        }
+
+        BookedProductsDto booked = inspect(request.products());
+        for (Map.Entry<UUID, Long> entry : request.products().entrySet()) {
+            long requested = entry.getValue() == null ? 0L : entry.getValue();
+            if (requested <= 0) {
+                continue;
+            }
+            WarehouseProduct product = find(entry.getKey());
+            product.setQuantity(product.getQuantity() - requested);
+            repository.save(product);
+        }
+
+        OrderBooking booking = new OrderBooking();
+        booking.setOrderId(request.orderId());
+        booking.setProducts(request.products());
+        booking.setDeliveryWeight(booked.deliveryWeight());
+        booking.setDeliveryVolume(booked.deliveryVolume());
+        booking.setFragile(booked.fragile());
+        orderBookingRepository.save(booking);
+        return booked;
+    }
+
+    @Transactional
+    public void shippedToDelivery(ShippedToDeliveryRequest request) {
+        OrderBooking booking = orderBookingRepository.findById(request.orderId())
+                .orElseThrow(() -> new IllegalArgumentException("Order booking not found: " + request.orderId()));
+        booking.setDeliveryId(request.deliveryId());
+        orderBookingRepository.save(booking);
+    }
+
+    @Transactional
+    public void acceptReturn(Map<UUID, Long> products) {
+        if (products == null || products.isEmpty()) {
+            throw new IllegalArgumentException("Returned products must not be empty");
+        }
+        for (Map.Entry<UUID, Long> entry : products.entrySet()) {
+            long returned = entry.getValue() == null ? 0L : entry.getValue();
+            if (returned <= 0) {
+                throw new IllegalArgumentException("Returned quantity must be positive");
+            }
+            WarehouseProduct product = find(entry.getKey());
+            product.setQuantity(Math.addExact(product.getQuantity(), returned));
+            repository.save(product);
+        }
+    }
+
+    private BookedProductsDto inspect(Map<UUID, Long> products) {
+        if (products == null || products.isEmpty()) {
             throw new IllegalArgumentException("Shopping cart is empty");
         }
 
@@ -59,9 +120,8 @@ public class WarehouseService {
         double weight = 0.0;
         double volume = 0.0;
         boolean fragile = false;
-        List<Reservation> reservations = new ArrayList<>();
 
-        for (Map.Entry<UUID, Long> entry : cart.products().entrySet()) {
+        for (Map.Entry<UUID, Long> entry : products.entrySet()) {
             long requested = entry.getValue() == null ? 0L : entry.getValue();
             if (requested <= 0) continue;
             WarehouseProduct product = repository.findById(entry.getKey()).orElse(null);
@@ -69,7 +129,6 @@ public class WarehouseService {
                 missing.add(entry.getKey());
                 continue;
             }
-            reservations.add(new Reservation(product, requested));
             weight += product.getWeight() * requested;
             volume += product.getWidth() * product.getHeight() * product.getDepth() * requested;
             fragile |= product.isFragile();
@@ -77,12 +136,6 @@ public class WarehouseService {
 
         if (!missing.isEmpty()) {
             throw new NotEnoughProductInWarehouseException(missing);
-        }
-
-        for (Reservation reservation : reservations) {
-            WarehouseProduct product = reservation.product();
-            product.setQuantity(product.getQuantity() - reservation.quantity());
-            repository.save(product);
         }
 
         return new BookedProductsDto(weight, volume, fragile);
@@ -95,6 +148,4 @@ public class WarehouseService {
     private WarehouseProduct find(UUID id) {
         return repository.findById(id).orElseThrow(() -> new WarehouseProductNotFoundException(id));
     }
-
-    private record Reservation(WarehouseProduct product, long quantity) {}
 }

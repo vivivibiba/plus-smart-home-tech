@@ -5,6 +5,9 @@ import ru.yandex.practicum.commerce.api.WarehouseApi;
 import ru.yandex.practicum.commerce.api.dto.*;
 import ru.yandex.practicum.commerce.warehouse.service.WarehouseService;
 
+import java.util.Map;
+import java.util.UUID;
+
 @RestController
 public class WarehouseController implements WarehouseApi {
     private final WarehouseService service;
@@ -25,7 +28,22 @@ public class WarehouseController implements WarehouseApi {
 
     @Override
     public BookedProductsDto checkProductQuantity(ShoppingCartDto cart) {
-        return service.book(cart);
+        return service.check(cart);
+    }
+
+    @Override
+    public BookedProductsDto assemblyProductsForOrder(AssemblyProductsForOrderRequest request) {
+        return service.assemble(request);
+    }
+
+    @Override
+    public void shippedToDelivery(ShippedToDeliveryRequest request) {
+        service.shippedToDelivery(request);
+    }
+
+    @Override
+    public void acceptReturn(Map<UUID, Long> products) {
+        service.acceptReturn(products);
     }
 
     @Override
